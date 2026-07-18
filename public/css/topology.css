@@ -1,0 +1,567 @@
+/* ============================================================
+   topology.css — SVG connectivity flow visualization styles
+   ============================================================ */
+
+/* ─── Container ─────────────────────────────────────────────── */
+#topology-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.topology-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ─── Grid background ───────────────────────────────────────── */
+.topo-grid-line {
+  stroke: var(--topo-grid);
+  stroke-width: 1;
+}
+
+/* ─── Nodes ─────────────────────────────────────────────────── */
+.topo-node-group {
+  cursor: default;
+}
+.topo-node-group.animate-entry {
+  animation: nodeAppear 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.topo-node-bg {
+  fill: var(--topo-node-fill);
+  stroke: var(--topo-node-stroke);
+  stroke-width: 1.5;
+  rx: 16;
+  ry: 16;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.3));
+  transition: fill 300ms ease, stroke 300ms ease;
+}
+
+.topo-node-icon {
+  font-size: 1.75rem;
+  dominant-baseline: central;
+  text-anchor: middle;
+}
+
+.topo-node-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text-primary);
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+
+.topo-node-ip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-secondary);
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+
+.topo-node-sublabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+
+/* VPN node — special accent ring */
+.topo-vpn-ring {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.6;
+}
+
+/* Pulse ring around VPN node */
+.topo-pulse-ring {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0;
+}
+
+/* ─── Paths Data-Status Variables ───────────────────────────── */
+.topo-path-group[data-status="healthy"] { --path-color: var(--topo-path-healthy); }
+.topo-path-group[data-status="degraded"] { --path-color: var(--topo-path-degraded); }
+.topo-path-group[data-status="down"] { --path-color: var(--topo-path-down); }
+.topo-path-group[data-status="unknown"] { --path-color: var(--topo-path-unknown); }
+
+.topo-path-base {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.2;
+  stroke: var(--path-color);
+  transition: stroke 300ms ease;
+}
+
+.topo-path-flow {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 8 6;
+  animation: flowDash 1.8s linear infinite;
+  stroke: var(--path-color);
+  transition: stroke 300ms ease;
+}
+
+.topo-path-group[data-status="degraded"] .topo-path-flow.normal-flow {
+  animation-duration: 3s;
+}
+.topo-path-group[data-status="degraded"] .topo-path-dot {
+  animation-duration: 2.8s !important;
+}
+
+.topo-path-flow.broken {
+  stroke-dasharray: 4 10;
+  animation: errorFlash 1.2s ease infinite;
+}
+
+.topo-path-arrow {
+  fill: var(--path-color);
+  transition: fill 300ms ease;
+}
+.topo-path-dot {
+  fill: var(--path-color);
+  transition: fill 300ms ease;
+}
+
+/* Visibility toggles based on status */
+.topo-path-group[data-status="down"] .topo-path-normal {
+  opacity: 0;
+}
+.topo-path-group:not([data-status="down"]) .topo-path-error {
+  opacity: 0;
+}
+.topo-path-group[data-status="down"] .topo-latency-group {
+  opacity: 0;
+}
+.topo-path-normal, .topo-path-error, .topo-latency-group {
+  transition: opacity 300ms ease;
+}
+
+/* ─── Node Data-Status Variables ────────────────────────────── */
+.topo-node-group[data-status="healthy"] { --node-color: var(--topo-path-healthy); }
+.topo-node-group[data-status="degraded"] { --node-color: var(--topo-path-degraded); }
+.topo-node-group[data-status="down"] { --node-color: var(--topo-path-down); }
+.topo-node-group[data-status="unknown"] { --node-color: var(--topo-path-unknown); }
+
+.topo-vpn-ring, .topo-pulse-ring {
+  stroke: var(--node-color);
+  transition: stroke 300ms ease;
+}
+
+.topo-node-sublabel {
+  fill: var(--node-color);
+  transition: fill 300ms ease;
+}
+
+/* ─── Status Badge Data-Status ──────────────────────────────── */
+.topo-status-group[data-status="healthy"] { --badge-color: var(--status-healthy); }
+.topo-status-group[data-status="degraded"] { --badge-color: var(--status-degraded); }
+.topo-status-group[data-status="down"] { --badge-color: var(--status-down); }
+.topo-status-group[data-status="unknown"] { --badge-color: var(--status-unknown); }
+
+.topo-status-badge-bg {
+  fill: var(--badge-color);
+  stroke: var(--badge-color);
+  transition: fill 300ms ease, stroke 300ms ease;
+}
+
+.topo-status-badge-text {
+  fill: var(--badge-color);
+  transition: fill 300ms ease;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Latency label ─────────────────────────────────────────── */
+.topo-latency-bg {
+  rx: 6;
+  ry: 6;
+  fill: var(--path-color);
+  stroke: var(--path-color);
+  transition: fill 300ms ease, stroke 300ms ease;
+}
+
+.topo-latency-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--path-color);
+  transition: fill 300ms ease;
+}
+
+/* ─── Error overlay ─────────────────────────────────────────── */
+.topo-error-x {
+  font-size: 18px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--status-down);
+  animation: errorFlash 1s ease infinite;
+}
+
+.topo-error-text {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  fill: var(--status-down);
+  text-anchor: middle;
+  dominant-baseline: hanging;
+  opacity: 0.8;
+}
+
+/* ─── Placeholder state ─────────────────────────────────────── */
+.topo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  height: 100%;
+  width: 100%;
+  padding: var(--space-8);
+  text-align: center;
+  animation: fadeIn 400ms ease;
+}
+
+.topo-placeholder-icon {
+  font-size: 4rem;
+  opacity: 0.25;
+  animation: bounce 3s ease infinite;
+}
+
+.topo-placeholder h3 {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.topo-placeholder p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+/* ─── Info panel overlay on topology ───────────────────────── */
+.topo-info-panel {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  backdrop-filter: blur(var(--blur-md));
+  min-width: 180px;
+  animation: fadeInUp 300ms ease;
+}
+
+.topo-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: 0.75rem;
+}
+
+.topo-info-key {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.topo-info-val {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* --- Topology Details ---------------------------------------- */
+.topology-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--divider);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.topo-detail-card {
+  background: var(--bg-input);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+}
+
+.topo-flow-card {
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.topo-detail-metrics-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.topo-uptime-card {
+  flex: 0 0 auto;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.topo-latency-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.topo-ip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.topo-ip span {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.topo-ip strong {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.topo-ip strong.vpn-ip {
+  color: var(--accent-1);
+}
+
+.topo-arrow {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.uptime-ring-lg {
+  width: 48px;
+  height: 48px;
+  transform: rotate(-90deg);
+}
+.uptime-ring-lg circle {
+  fill: none;
+  stroke-width: 4;
+}
+.uptime-ring-lg .track {
+  stroke: var(--divider);
+}
+.uptime-ring-lg .fill {
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.uptime-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.uptime-text span {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.uptime-text strong {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+}
+
+.latency-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.latency-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+.latency-row-header span {
+  color: var(--text-muted);
+}
+.latency-row-header strong {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .topology-details {
+    padding: var(--space-3) var(--space-4);
+  }
+  .topo-detail-metrics-row {
+    flex-direction: column;
+  }
+}
+
+/* ─── VPN Details Strip (below topology SVG) ─────────────────── */
+.topo-details-strip {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--divider);
+  background: var(--bg-secondary);
+  animation: fadeInUp 250ms ease;
+  overflow-x: auto;
+}
+
+.topo-detail-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+
+.topo-detail-tile-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topo-detail-tile-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topo-detail-tile-value.accent { color: var(--accent-1); }
+.topo-detail-tile-value.healthy { color: var(--status-healthy); }
+.topo-detail-tile-value.degraded { color: var(--status-degraded); }
+.topo-detail-tile-value.down { color: var(--status-down); }
+.topo-detail-tile-value.unknown { color: var(--status-unknown); }
+
+/* Latency bar inside tile */
+.topo-detail-bar-track {
+  height: 4px;
+  background: var(--divider);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.topo-detail-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.topo-detail-bar-fill.good    { background: var(--status-healthy); }
+.topo-detail-bar-fill.medium  { background: var(--status-degraded); }
+.topo-detail-bar-fill.bad     { background: var(--status-down); }
+
+/* Uptime tile special */
+.topo-uptime-tile {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+.topo-uptime-ring {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.topo-uptime-ring circle {
+  fill: none;
+  stroke-width: 4;
+}
+.topo-uptime-ring .track  { stroke: var(--divider); }
+.topo-uptime-ring .fill   {
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Full-width tiles (IPs row) */
+.topo-detail-tile.wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  padding: var(--space-3) var(--space-4);
+}
+.topo-detail-ip-seg {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.topo-detail-ip-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.topo-detail-ip-value {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.topo-detail-ip-value.vpn-ip { color: var(--accent-1); }
+
+.topo-detail-arrow {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 0 var(--space-2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .topo-details-strip {
+    grid-template-columns: repeat(2, 1fr);
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-2);
+  }
+  .topo-detail-tile.wide {
+    grid-column: 1 / -1;
+  }
+}

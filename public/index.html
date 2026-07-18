@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VPN Monitor — Connectivity Dashboard</title>
+  <meta name="description" content="Real-time VPN monitoring dashboard. Manage VPN connections, visualize connectivity flows, and track health metrics with animated topology views." />
+
+  <!-- Preload fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/animations.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/vpn-card.css" />
+  <link rel="stylesheet" href="/css/topology.css" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Toast container styles (injected dynamically but positioned here) -->
+  <style>
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: var(--z-toast);
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 0;
+      pointer-events: none;
+    }
+    #toast-container .toast {
+      pointer-events: all;
+    }
+
+    /* Prevent FOUC — set dark theme immediately */
+    html:not([data-theme]) { background: #080c18; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══════════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════ -->
+  <header id="header" role="banner">
+    <div class="header-brand">
+      <!-- Shield + lock SVG logo -->
+      <div class="header-logo" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <rect x="9" y="11" width="6" height="5" rx="1"/>
+          <circle cx="12" cy="10" r="1" fill="white"/>
+          <line x1="12" y1="10" x2="12" y2="11"/>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">VPN Monitor</div>
+        <div class="header-subtitle">Real-time Connectivity Dashboard</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+        <!-- Sun SVG -->
+        <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+
+      <button id="add-vpn-btn" class="btn btn-primary"
+        aria-label="Add new VPN"
+        title="Add VPN (N)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add VPN
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════
+       STATS BAR
+  ══════════════════════════════════════════ -->
+  <section id="stats-bar" role="region" aria-label="VPN health summary">
+    <div class="stat-item total">
+      <!-- Shield icon -->
+      <span class="stat-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </span>
+      <div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total VPNs</div>
+      </div>
+    </div>
+    <div class="stat-divider" aria-hidden="true"></div>
+    <div class="stat-item healthy">
+      <span class="stat-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </span>
+      <div>
+        <div class="stat-value" id="stat-healthy">0</div>
+        <div class="stat-label">Healthy</div>
+      </div>
+    </div>
+    <div class="stat-divider" aria-hidden="true"></div>
+    <div class="stat-item degraded">
+      <span class="stat-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </span>
+      <div>
+        <div class="stat-value" id="stat-degraded">0</div>
+        <div class="stat-label">Degraded</div>
+      </div>
+    </div>
+    <div class="stat-divider" aria-hidden="true"></div>
+    <div class="stat-item down">
+      <span class="stat-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+      </span>
+      <div>
+        <div class="stat-value" id="stat-down">0</div>
+        <div class="stat-label">Down</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       MAIN — TWO-PANEL LAYOUT
+  ══════════════════════════════════════════ -->
+  <main id="main" role="main">
+
+    <!-- ── LEFT: VPN List Panel ────────────────── -->
+    <aside id="vpn-panel" role="complementary" aria-label="VPN list">
+      <div class="vpn-panel-header">
+        <div class="vpn-panel-title-row">
+          <span class="vpn-panel-title">VPN Connections</span>
+        </div>
+
+        <!-- Search + Filter -->
+        <div class="vpn-filter-row">
+          <div class="search-wrap" style="flex:1">
+            <span class="search-icon" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input
+              type="search"
+              id="search-input"
+              class="form-input"
+              placeholder="Search by name, IP…"
+              autocomplete="off"
+              aria-label="Search VPNs"
+            />
+          </div>
+          <select id="filter-select" class="filter-select" aria-label="Filter by status">
+            <option value="all">All</option>
+            <option value="healthy">Healthy</option>
+            <option value="degraded">Degraded</option>
+            <option value="down">Down</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- VPN Card List -->
+      <div id="vpn-list" role="list" aria-label="VPN connections">
+        <!-- Rendered by vpn-card.js -->
+        <div class="empty-state">
+          <div class="empty-state-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h3>Loading…</h3>
+          <p>Fetching VPN data from the server.</p>
+        </div>
+      </div>
+    </aside>
+
+    <section id="topology-panel" aria-label="Connectivity topology">
+      <div class="topology-panel-header">
+        <div class="topology-panel-title">
+          <span class="topology-panel-label">Connectivity Flow</span>
+          <span class="topology-panel-vpn-name" id="topo-vpn-name">— Select a VPN —</span>
+          <!-- ICMP / monitor method subtitle -->
+          <span id="topo-monitor-subtitle" class="topo-monitor-subtitle" style="display:none;"></span>
+          <span class="chip" id="topo-monitor-method" style="display: none; margin-left: 0;"></span>
+        </div>
+        <div class="topo-header-chips">
+          <span class="chip" id="topo-flow-chip">Source → VPN → Destination</span>
+        </div>
+      </div>
+
+      <!-- SVG topology is rendered here by topology.js -->
+      <div id="topology-container" aria-label="VPN connectivity diagram">
+        <div class="topo-placeholder">
+          <div class="topo-placeholder-icon" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3>No VPN Selected</h3>
+          <p>Select a VPN from the list to visualize its connectivity flow and health status.</p>
+        </div>
+      </div>
+
+      <!-- VPN Details strip — populated by app.js when a VPN is selected -->
+      <div id="topo-details" class="topo-details-strip" style="display:none;" aria-live="polite"></div>
+
+
+      <!-- Footer bar -->
+      <div id="last-checked-bar" role="status" aria-live="polite">
+        <span id="last-checked-time">—</span>
+        <span class="chip">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Auto-refresh: 6s
+        </span>
+      </div>
+    </section>
+
+  </main>
+
+</div><!-- #app -->
+
+<!-- ════════════════════════════════════════════
+     MODAL OVERLAY (shared)
+════════════════════════════════════════════ -->
+<div id="modal-overlay" class="modal-overlay" role="presentation" aria-hidden="true"></div>
+
+<!-- ════════════════════════════════════════════
+     ADD / EDIT VPN MODAL
+════════════════════════════════════════════ -->
+<dialog id="vpn-modal" class="modal" aria-modal="true" aria-labelledby="vpn-modal-title">
+  <div class="modal-header">
+    <h2 class="modal-title" id="vpn-modal-title">＋ Add VPN</h2>
+    <button class="btn-icon" id="vpn-modal-close" aria-label="Close modal" title="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="modal-body">
+    <!-- Name + Protocol -->
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="f-name">VPN Name *</label>
+        <input type="text" id="f-name" class="form-input" placeholder="e.g. US East Production" maxlength="100" autocomplete="off" />
+        <span class="form-error-msg" id="f-name-error" role="alert"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="f-protocol">Protocol *</label>
+        <select id="f-protocol" class="form-select">
+          <option value="WireGuard">WireGuard</option>
+          <option value="OpenVPN">OpenVPN</option>
+          <option value="IPSec">IPSec</option>
+          <option value="L2TP">L2TP</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Monitor Type + Port -->
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="f-monitor-type">Monitoring Type *</label>
+        <select id="f-monitor-type" class="form-select">
+          <option value="end-to-end">End-to-End Tunnel</option>
+          <option value="infrastructure">Infrastructure Only (VPN IP)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="f-port">Port <span id="f-port-asterisk">*</span></label>
+        <input type="number" id="f-port" class="form-input" placeholder="51820" min="1" max="65535" />
+        <span class="form-error-msg" id="f-port-error" role="alert"></span>
+        <div id="f-port-helper" class="form-helper-text" style="display: none; font-size: 0.75rem; margin-top: 4px; color: var(--accent-1);"></div>
+      </div>
+    </div>
+
+    <!-- VPN Server IP -->
+    <div class="form-group">
+      <label class="form-label" for="f-vpn-ip">VPN Server IP *</label>
+      <input type="text" id="f-vpn-ip" class="form-input" placeholder="45.33.22.11" autocomplete="off" />
+      <span class="form-error-msg" id="f-vpn-ip-error" role="alert"></span>
+    </div>
+
+    <!-- End-to-End specific fields (Hidden if Infrastructure) -->
+    <div id="end-to-end-fields">
+      <!-- Source IP -->
+      <div class="form-group" style="margin-bottom: var(--space-4);">
+        <label class="form-label" for="f-source-ip">Source IP *</label>
+        <input type="text" id="f-source-ip" class="form-input" placeholder="192.168.1.100" autocomplete="off" />
+        <span class="form-error-msg" id="f-source-ip-error" role="alert"></span>
+      </div>
+
+      <!-- Destination IP -->
+      <div class="form-group">
+        <label class="form-label" for="f-dest-ip">Destination IP *</label>
+        <input type="text" id="f-dest-ip" class="form-input" placeholder="10.0.0.50" autocomplete="off" />
+        <span class="form-error-msg" id="f-dest-ip-error" role="alert"></span>
+      </div>
+    </div>
+
+    <!-- Location + Description -->
+    <div class="form-group">
+      <label class="form-label" for="f-location">Location</label>
+      <input type="text" id="f-location" class="form-input" placeholder="e.g. US-East (Virginia)" maxlength="100" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-description">Description</label>
+      <textarea id="f-description" class="form-textarea form-input" placeholder="Optional notes about this VPN…" maxlength="500"></textarea>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn btn-ghost" id="vpn-modal-cancel" type="button">Cancel</button>
+    <button class="btn btn-primary" id="vpn-modal-save" type="button">Create VPN</button>
+  </div>
+</dialog>
+
+<!-- ════════════════════════════════════════════
+     DELETE CONFIRMATION MODAL
+════════════════════════════════════════════ -->
+<dialog id="delete-modal" class="modal" aria-modal="true" aria-labelledby="delete-modal-heading">
+  <div class="modal-header">
+    <h2 class="modal-title" id="delete-modal-heading">Delete VPN</h2>
+    <button class="btn-icon" id="delete-modal-close" aria-label="Close" title="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="modal-body confirm-dialog">
+    <span class="warning-icon" role="img" aria-label="Warning">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </span>
+    <p>
+      Are you sure you want to delete<br/>
+      <strong id="delete-vpn-name">"VPN Name"</strong>?
+    </p>
+    <p style="margin-top: 8px; font-size: 0.8125rem; color: var(--text-muted);">
+      This action cannot be undone. All health data for this VPN will be permanently removed.
+    </p>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn btn-ghost" id="cancel-delete-btn" type="button">Cancel</button>
+    <button class="btn btn-danger" id="confirm-delete-btn" type="button" data-id="">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+      </svg>
+      Delete
+    </button>
+  </div>
+</dialog>
+
+<!-- Toast container -->
+<div id="toast-container" role="region" aria-live="polite" aria-label="Notifications"></div>
+
+<!-- JS (ES modules) -->
+<script type="module" src="/js/app.js"></script>
+
+</body>
+</html>
