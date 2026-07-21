@@ -4,7 +4,6 @@
 
 import { updateVPNStatus } from './api.js';
 import { showToast } from './toast.js';
-import { statusIcon } from './utils.js';
 
 const CHECK_INTERVAL_MS = 6000; // every 6 seconds
 
@@ -14,6 +13,7 @@ const vpnState = new Map(); // id → { baseLatency, reliability, trend }
 let timerId = null;
 let vpnListRef = [];        // reference to current VPN list
 let onUpdate = null;        // callback when any VPN status changes
+let onLog    = null;        // callback(type, vpnName, message) for live log
 
 /** Initialize simulation state for a VPN (idempotent) */
 function ensureState(vpn) {
@@ -104,6 +104,16 @@ async function runCheckCycle() {
         showToast(toastType, vpn.name,
           `Status changed: ${prevStatus} → ${newStatus}`);
       }
+
+      // Live log entry
+      const latMsg = newStatus === 'down'
+        ? 'Connection lost'
+        : `Latency: ${latency_source}ms → VPN${vpn.monitor_type !== 'infrastructure' ? ` → ${latency_dest}ms` : ''}`;
+      if (newStatus !== prevStatus && prevStatus !== 'unknown') {
+        onLog?.(newStatus, vpn.name, `Status changed: ${prevStatus} → ${newStatus}. ${latMsg}`, vpn.id);
+      } else {
+        onLog?.('check', vpn.name, latMsg, vpn.id);
+      }
     } catch {
       // Silently skip — network error already toasted by api.js
     }
@@ -114,9 +124,10 @@ async function runCheckCycle() {
 }
 
 /** Start the health monitor */
-export function startHealthMonitor(vpns, updateCallback) {
+export function startHealthMonitor(vpns, updateCallback, logCallback) {
   vpnListRef = vpns;
   onUpdate   = updateCallback;
+  onLog      = logCallback || null;
   stopHealthMonitor();
   timerId = setInterval(runCheckCycle, CHECK_INTERVAL_MS);
   console.log('[Health] Monitor started — interval:', CHECK_INTERVAL_MS, 'ms');

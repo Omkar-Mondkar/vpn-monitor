@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { sendFailureAlert } = require('../mailer');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -188,7 +189,19 @@ router.patch('/:id/status', async (req, res) => {
       [status || null, latency_source ?? null, latency_dest ?? null, uptime ?? null, req.params.id]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'VPN not found.' });
-    res.json(result.rows[0]);
+    const vpn = result.rows[0];
+
+    // ─── Mail alert on failure ─────────────────────────────────────────────
+    if (status === 'down' || status === 'degraded') {
+      sendFailureAlert(vpn.id, vpn.name, status, {
+        latency_source: vpn.latency_source,
+        latency_dest:   vpn.latency_dest,
+        uptime:         vpn.uptime,
+        vpn_server_ip:  vpn.vpn_server_ip,
+      }).catch(() => {}); // fire-and-forget
+    }
+
+    res.json(vpn);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update status.', detail: err.message });
   }

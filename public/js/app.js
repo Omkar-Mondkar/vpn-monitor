@@ -10,6 +10,8 @@ import { initVPNManager, onVPNChange, openEditModal, openDeleteModal } from './v
 import { startHealthMonitor, updateVPNList, checkNow } from './health.js';
 import { showToast }                   from './toast.js';
 import { debounce, formatTime, latencyClass, latencyPercent, escapeHtml } from './utils.js';
+import { initChart, pushDataPoint, renderChart, clearChart, setChartTimeWindow, getChartTimeWindows } from './chart.js';
+import { initLog, pushLog, setLogVpnFilter, getLogVpnList } from './live-log.js';
 
 // ─── App state ────────────────────────────────────────────────
 let vpns        = [];
@@ -29,6 +31,11 @@ const statsDown      = document.getElementById('stat-down');
 const lastCheckedEl  = document.getElementById('last-checked-time');
 const searchInput    = document.getElementById('search-input');
 const filterSelect   = document.getElementById('filter-select');
+const chartCanvas    = document.getElementById('latency-chart');
+const chartPanel     = document.getElementById('chart-panel');
+const logEntriesEl   = document.getElementById('log-entries');
+const chartTimeBtns  = document.getElementById('chart-time-btns');
+const logVpnFilter   = document.getElementById('log-vpn-filter');
 
 // ─── Stats update ─────────────────────────────────────────────
 function updateStats() {
@@ -277,6 +284,17 @@ function selectVPN(vpn) {
   selectedVPN = vpn;
   renderList(); // re-render to update selected state
   renderTopo();
+
+  // Show/hide chart panel and render chart
+  if (chartPanel) {
+    if (vpn) {
+      chartPanel.style.display = '';
+      renderChart(vpn.id);
+    } else {
+      chartPanel.style.display = 'none';
+      clearChart();
+    }
+  }
 }
 
 // ─── Manual health check ──────────────────────────────────────
@@ -331,6 +349,17 @@ function onHealthUpdate() {
   // Update details strip in-place (lightweight)
   renderTopoDetails(selectedVPN);
 
+  // Push latency data point to chart and re-render
+  if (selectedVPN) {
+    pushDataPoint(
+      selectedVPN.id,
+      selectedVPN.latency_source,
+      selectedVPN.latency_dest,
+      selectedVPN.status
+    );
+    renderChart(selectedVPN.id);
+  }
+
   if (lastCheckedEl) {
     lastCheckedEl.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
   }
@@ -347,6 +376,43 @@ async function init() {
   // Theme (must be first to avoid flash)
   initTheme();
   bindThemeToggle();
+
+  // Init live chart + build time-window buttons
+  if (chartCanvas) {
+    initChart(chartCanvas);
+    if (chartTimeBtns) {
+      getChartTimeWindows().forEach((w, idx) => {
+        const btn = document.createElement('button');
+        btn.textContent = w;
+        btn.className   = 'chart-time-btn' + (idx === 1 ? ' active' : ''); // default: 5m
+        btn.dataset.window = w;
+        btn.addEventListener('click', () => {
+          chartTimeBtns.querySelectorAll('.chart-time-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          setChartTimeWindow(w);
+        });
+        chartTimeBtns.appendChild(btn);
+      });
+    }
+  }
+
+  // Init live log + wire VPN filter dropdown
+  if (logEntriesEl) {
+    initLog(logEntriesEl, (vpnList) => {
+      if (!logVpnFilter) return;
+      // Rebuild dropdown options (preserve current selection)
+      const current = logVpnFilter.value;
+      logVpnFilter.innerHTML = '<option value="all">All VPNs</option>';
+      vpnList.forEach(({ id, name }) => {
+        const opt = document.createElement('option');
+        opt.value       = id;
+        opt.textContent = name;
+        if (id === current) opt.selected = true;
+        logVpnFilter.appendChild(opt);
+      });
+    });
+    logVpnFilter?.addEventListener('change', e => setLogVpnFilter(e.target.value));
+  }
 
   // VPN CRUD manager
   initVPNManager();
@@ -366,8 +432,8 @@ async function init() {
   // Load initial data
   await loadVPNs();
 
-  // Start health monitor after initial data is loaded
-  startHealthMonitor(vpns, onHealthUpdate);
+  // Start health monitor after initial data is loaded (with log callback)
+  startHealthMonitor(vpns, onHealthUpdate, pushLog);
 
   // Topology resize observer — ONLY rescale the existing SVG, never re-render
   if (topoContainer && window.ResizeObserver) {

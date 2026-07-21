@@ -232,11 +232,14 @@
 #topology-panel {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   background: var(--topo-bg);
   transition: background var(--transition-theme);
   min-width: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .topology-panel-header {
@@ -291,12 +294,13 @@
 }
 
 #topology-container {
-  flex: 1;
+  flex: 0 0 auto;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  min-height: 220px;
+  height: 300px;
 }
 
 /* ─── Last-checked bar ──────────────────────────────────────── */
