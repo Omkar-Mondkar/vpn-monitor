@@ -8,6 +8,10 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  /* Cap at 1920px and centre on ultra-wide monitors */
+  max-width: 1920px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* ─── Header ────────────────────────────────────────────────── */
@@ -294,13 +298,12 @@
 }
 
 #topology-container {
-  flex: 0 0 auto;
+  flex: 1 1 auto;   /* grow/shrink to fill available vertical space */
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 220px;
-  height: 300px;
 }
 
 /* ─── Last-checked bar ──────────────────────────────────────── */
@@ -318,9 +321,27 @@
   gap: var(--space-3);
 }
 
-/* ─── Responsive — Large Desktop (1400px+) ───────────────────── */
-@media (min-width: 1400px) {
-  :root { --sidebar-w: 380px; }
+/* ─── Responsive — Ultra-wide (1920px+) ─────────────────────── */
+@media (min-width: 1920px) {
+  :root {
+    --sidebar-w:  480px;
+    --header-h:   72px;
+    --space-6:    28px;
+  }
+  .stat-value       { font-size: 1.625rem; }
+  .topology-panel-vpn-name { font-size: 1.2rem; }
+  .topo-details-strip { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+
+/* ─── Responsive — Large Desktop (1600–1919px) ───────────────── */
+@media (min-width: 1600px) and (max-width: 1919px) {
+  :root { --sidebar-w: 440px; }
+  .stat-value { font-size: 1.5rem; }
+}
+
+/* ─── Responsive — Large Desktop (1400–1599px) ───────────────── */
+@media (min-width: 1400px) and (max-width: 1599px) {
+  :root { --sidebar-w: 400px; }
 }
 
 /* ─── Responsive — Standard Desktop / Laptop (1024–1400px) ───── */
